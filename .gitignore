@@ -9,6 +9,7 @@ __pycache__/
 .venv/
 *.pdf
 .env
+用户配置.local.txt
 *.egg-info/
 build/
 dist/
