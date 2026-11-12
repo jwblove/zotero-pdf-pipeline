@@ -54,6 +54,16 @@ def doi_in_text(doi, text):
     return any(normalize_doi(match.group()) == expected for match in
                re.finditer(r'\b10\.\d{4,9}/[^\s<>"\]]+', text, re.I))
 
+def _first_page_labeled_dois(text):
+    """Collect explicitly labelled first-page DOIs, not bare in-text citations."""
+    first_page = text.split('\f', 1)[0]
+    found = set()
+    for line in first_page.splitlines()[:120]:
+        match = re.match(r'^\s*(?:doi\s*:\s*|https?://(?:dx\.)?doi\.org/)(10\.\d{4,9}/\S+)', line, re.I)
+        if match:
+            found.add(normalize_doi(match.group(1)))
+    return found
+
 def _author_normal(text):
     # PDF accent positioning may insert a space: Sin´ ead -> Sinead.
     text = re.sub(r"(?<=\w)[´`ˊˋˆ˜¨˚ˇ˘˙¸˛\u0300-\u036f]\s*(?=\w)", '', text)
@@ -173,7 +183,7 @@ def pdf_pages_and_text(path, max_pages=2):
 def check_pdf(path, expected_title='', expected_doi='', min_bytes=20480, similarity_threshold=.55,
               *, expected_authors=None, max_bytes=DEFAULT_MAX_PDF_BYTES, allow_scanned=False,
               institutional_authors=False, inbox_matched=False):
-    """Authors/DOI rescue only borderline title matches, never unrelated/short text."""
+    """Verify a PDF using bounded title/author evidence or its labelled first-page DOI."""
     try:
         return _check(Path(path),expected_title,expected_doi,min_bytes,similarity_threshold,
                       expected_authors or [],max_bytes,allow_scanned,institutional_authors,inbox_matched)
@@ -199,10 +209,19 @@ def _check(path,title,doi,min_bytes,threshold,authors,max_bytes,allow_scanned,in
     author_match=_surname_present(surname, text)
     shared=_tokens(title)&_tokens(' '.join(_clean_lines(text)))
     supported=score>=.35 and len(shared)>=2 and len(shared)/max(1,len(_tokens(title)))>=.4 and (doi_match or author_match)
+    labeled_dois = _first_page_labeled_dois(text)
+    expected_doi = normalize_doi(doi)
+    if re.fullmatch(r'10\.\d{4,9}/\S+', expected_doi) and labeled_dois:
+        if labeled_dois != {expected_doi}:
+            return CheckResult(False, '首页标注 DOI 不一致或存在多个 DOI，需人工核对', pages, score, size)
+    first_page_doi = bool(expected_doi and labeled_dois == {expected_doi})
+    authors_missing = _authors_missing(text, authors, score, institutional, inbox_matched)
+    if first_page_doi and ((title and score < threshold) or authors_missing):
+        return CheckResult(True, '首页标注 DOI 精确匹配；题目或作者与 Zotero 不一致，请人工核对元数据', pages, score, size)
     if title and score>=threshold: reason='标题窗口匹配通过'
     elif title and supported: reason='边界标题匹配由 DOI/第一作者证据支持'
     elif not title and doi_match: reason='无期望标题；精确 DOI 匹配通过'
     else: return CheckResult(False,f'标题相似度不足（{score:.2f} < {threshold}），需人工检查',pages,score,size)
-    if _authors_missing(text, authors, score, institutional, inbox_matched):
+    if authors_missing:
         return CheckResult(False,'需人工复核（needs manual review）：author names not found on first page（首页未找到条目作者姓氏）',pages,score,size)
     return CheckResult(True,reason,pages,score,size)

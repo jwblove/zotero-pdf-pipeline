@@ -13,6 +13,8 @@ Write only inside `dest_dir`. Credentials come only from environment variables a
 
 `fetch` copies, validates and archives candidates; it does not attach them. Failed validation attempts quarantine and always blocks attachment, even if quarantine fails. A separate `attach` command imports once, waits, then confirms that the parent still has a PDF using local API plus MCP read-back. Add-on renames/moves/key changes are fine; the recorded key is informational.
 
+**Paid source boundary:** the core validates only after `Source.fetch` returns. It cannot prevent a plugin from spending points or accepting a response before validation, or ensure a timed-out remote operation failed. This protocol has no post-validation acceptance callback. Plugin authors must explicitly document those effects, persist remote request identifiers before retries, distinguish unknown outcomes, and avoid automatically republishing or charging after interruption. Where the provider allows it, validate a downloaded file before accepting or committing a paid response. Do not claim that core quarantine can undo a third-party transaction.
+
 ## Working local-copy quick start
 
 Save these ten lines as `~/.config/zotero-pipeline/plugins/local_copy.py`. Put a matching, legitimately obtained PDF named `candidate.pdf` beside it:

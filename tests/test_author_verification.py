@@ -11,7 +11,7 @@ from zotero_pdf_pipeline.zotero_local import ZoteroLocal
 EXPECTED = 'Overlooked Solid Electrolyte Interphase Destabilization by Dissolved Transition Metals in Lithium Batteries'
 ACTUAL = 'Overlooked Solid Electrolyte Interphase Destabilization Induced by Mechanical Stress in Sodium Batteries'
 AUTHORS = ['Davidson','Gates','Wells']
-TEXT = (ACTUAL+'\nWang, Fang, Niu\nDOI: 10.1234/wrong\nAbstract\n'
+TEXT = (ACTUAL+'\nWang, Fang, Niu\nSee also 10.1234/wrong\nAbstract\n'
     'We report systematic measurements of sodium battery interfaces under mechanical stress. '
     'Experiments demonstrate interfacial changes during repeated charging, with extensive microscopy '
     'and spectroscopy measurements across different cycling conditions and electrode structures.')
@@ -35,6 +35,44 @@ def test_wrong_doi_and_shared_title_prefix_need_manual_review(monkeypatch,pdf):
     assert .55 <= result.similarity < .95
     assert not result.ok and 'needs manual review' in result.reason
     assert 'author names not found on first page' in result.reason
+
+
+def test_first_page_labeled_doi_allows_metadata_discrepancy_with_warning(monkeypatch,pdf):
+    text = TEXT.replace('See also 10.1234/wrong', 'DOI: 10.1234/wrong')
+    result = check(monkeypatch,pdf,text)
+    assert result.ok and '人工核对元数据' in result.reason
+
+
+def test_labeled_doi_after_extraction_blank_lines(monkeypatch,pdf):
+    text = TEXT + '\n'*70 + 'DOI: 10.1234/wrong\n'
+    assert check(monkeypatch,pdf,text).ok
+
+
+def test_first_page_doi_url_allows_different_title_and_authors(monkeypatch,pdf):
+    text = 'Unrelated published title\nOther Author\nhttps://doi.org/10.1234/wrong\n' + 'Research data and methods. '*20
+    result = check(monkeypatch,pdf,text)
+    assert result.ok and '人工核对元数据' in result.reason
+
+
+def test_doi_on_second_page_does_not_override_author_mismatch(monkeypatch,pdf):
+    result = check(monkeypatch,pdf,TEXT+'\fDOI: 10.1234/wrong')
+    assert not result.ok
+
+
+def test_bare_doi_reference_does_not_override_author_mismatch(monkeypatch,pdf):
+    assert not check(monkeypatch,pdf).ok
+
+
+def test_conflicting_first_page_doi_rejected_even_when_title_matches(monkeypatch,pdf):
+    text = EXPECTED+'\nDavidson\nDOI: 10.1234/another\n' + 'Research methods and findings. '*20
+    result = check(monkeypatch,pdf,text)
+    assert not result.ok and 'DOI 不一致' in result.reason
+
+
+def test_multiple_first_page_dois_require_manual_review(monkeypatch,pdf):
+    text = EXPECTED+'\nDavidson\nDOI: 10.1234/wrong\nDOI: 10.1234/another\n' + 'Research findings. '*20
+    result = check(monkeypatch,pdf,text)
+    assert not result.ok and '多个 DOI' in result.reason
 
 
 @pytest.mark.parametrize('surname',AUTHORS)

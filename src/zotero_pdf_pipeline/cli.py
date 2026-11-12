@@ -333,6 +333,9 @@ def _cmd_fetch(cfg: Config, store: Store, only_keys: list[str], free_only: bool 
             failed += 1
             continue
 
+        if '人工核对元数据' in getattr(result, 'reason', ''):
+            LOG.warning('[%s] %s', paper.item_key, result.reason)
+
         # ---------- 步骤 6: 规范命名并归档到归档目录 ----------
         # 目的: 让磁盘文件名与 Zotero 的命名规范一致，
         #       避免 附件管理插件 二次改名产生 " 1" 冲突副本
@@ -438,6 +441,9 @@ def cmd_attach(cfg: Config, store: Store, only_keys: list[str] | None) -> int:
                        note=f"校验失败：{validation.reason}", bump_attempts=True)
             fail_count += 1
             continue
+
+        if '人工核对元数据' in getattr(validation, 'reason', ''):
+            LOG.warning('[%s] %s', item_key, validation.reason)
 
         # ---------- 步骤 3: 构造 PaperNeed 并挂载 ----------
         paper = PaperNeed(
