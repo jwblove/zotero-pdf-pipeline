@@ -1,0 +1,43 @@
+[zotero]
+local_api = "http://127.0.0.1:23119/api/users/0"
+mcp_url = "http://127.0.0.1:23120/mcp"
+collection_key = "YOUR_COLLECTION_KEY"
+library_id = 1
+
+[paths]
+# Windows Zotero attach from WSL requires archive/staging on /mnt/<drive>/... .
+# The home-directory example below is for fetch-only use; change it before attach.
+archive_dir = "~/zotero-pdf-archive"
+staging_dir = "data/staging"
+state_db = "data/pipeline.db"
+report_dir = "data/reports"
+inbox_dir = "data/inbox"
+
+[fetch]
+source_order = ["inbox", "openalex", "unpaywall", "arxiv", "semantic_scholar", "europe_pmc"]
+# Optional alternative (requires CORE_API_KEY):
+# source_order = ["inbox", "openalex", "unpaywall", "arxiv", "semantic_scholar", "europe_pmc", "core"]
+enable_arxiv = true
+enable_crossref = false
+http_timeout = 45
+# Standard environment proxy selection, respecting NO_PROXY/no_proxy.
+# Direct hops pin validated IPs; proxy-side DNS rebinding remains a residual risk.
+use_env_proxy = true
+min_pdf_bytes = 20480
+# Maximum decoded PDF bytes (positive integer, at most 1 GiB); default 100 MiB.
+max_pdf_bytes = 104857600
+title_similarity = 0.55
+# After import, wait up to this window and confirm the parent still has a PDF.
+# Imported files wait the full window; linked PDFs may finish after two reads.
+# Recorded keys are informational; add-ons may rename/move/convert attachments.
+# The tool never changes those attachments. Positive values only, maximum 60.
+attach_settle_seconds = 20
+
+[contact]
+email = ""
+
+[plugins]
+enabled = []
+# Optional alternative: replace the active line above with:
+# enabled = ["my_plugin"]
+directory = "~/.config/zotero-pipeline/plugins"

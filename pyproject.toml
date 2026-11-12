@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=65,<83", "wheel>=0.41,<1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zotero-pdf-pipeline"
+version = "0.1.0"
+description = "Fetch and validate PDFs for Zotero collections"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.28.1,<0.29", "httpcore>=1.0.9,<1.1", "pypdf>=4,<7"]
+
+[project.optional-dependencies]
+test = ["pytest>=7,<10"]
+
+[project.scripts]
+zotero-pdf-pipeline = "zotero_pdf_pipeline.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

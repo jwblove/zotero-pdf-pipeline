@@ -1,0 +1,14 @@
+data/
+config.toml
+*.db
+*.log
+browser-profile/
+staging*/
+__pycache__/
+.pytest_cache/
+.venv/
+*.pdf
+.env
+*.egg-info/
+build/
+dist/
