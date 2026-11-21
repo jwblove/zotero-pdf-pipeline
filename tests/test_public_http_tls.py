@@ -45,7 +45,14 @@ def test_guarded_transport_preserves_host_sni_and_certificate_validation(
         try:
             with listener.accept()[0] as raw:
                 raw.settimeout(5)
-                with server.wrap_socket(raw,server_side=True) as stream:
+                try:
+                    tls = server.wrap_socket(raw, server_side=True)
+                except (ssl.SSLError, ConnectionResetError):
+                    # A client rejecting our hostname can reset the TCP connection
+                    # instead of delivering a TLS alert on Windows.
+                    if valid: raise
+                    return
+                with tls as stream:
                     while b'\r\n\r\n' not in observed['http']:
                         part=stream.recv(4096)
                         if not part:break
@@ -53,8 +60,6 @@ def test_guarded_transport_preserves_host_sni_and_certificate_validation(
                     body=b'%PDF-local-fixture'
                     stream.sendall(b'HTTP/1.1 200 OK\r\nContent-Length: '+str(len(body)).encode()+
                                    b'\r\nConnection: close\r\n\r\n'+body)
-        except ssl.SSLError:
-            if valid:errors.append('unexpected TLS error')
         except Exception as error:errors.append(type(error).__name__)
     thread=threading.Thread(target=serve,daemon=True);thread.start()
     def only_fixture(sock,endpoint):
