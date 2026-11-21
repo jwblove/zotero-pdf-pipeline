@@ -82,7 +82,7 @@ write_bytes(root: Path, name: str, content: bytes, **kwargs)             # -> Pa
 copy_file(source: Path, root: Path, name: str, *, max_bytes=104857600)    # -> Path
 ```
 
-For `write_bytes`, supported keyword arguments are `max_bytes=104857600` and `unique=True`. Existing names get a suffix; `unique=False` refuses a collision. Use the returned path. These helpers rely on OS file APIs such as directory file descriptors, no-follow flags and hard links; portability is not automatic. The current CLI lock uses POSIX APIs. Test the destination platform; using `pathlib` alone does not make a plugin portable.
+For `write_bytes`, supported keyword arguments are `max_bytes=104857600` and `unique=True`. Existing names get a suffix; `unique=False` refuses a collision. Use the returned path. On native Windows, publication uses a pinned directory and exclusive rename, and the CLI holds an exclusive Windows handle for the command lifetime. On POSIX, publication uses directory file descriptors and hard links, and locking uses flock.
 
 `request` returns a bounded, materialized `httpx.Response`, not a lazy stream. `timeout` is seconds; `max_bytes` limits Content-Length and actual decoded bytes. `headers=` and `params=` are optional. The default cap is 2 MiB; choose an explicit PDF cap as above. Non-200 responses, invalid URLs, size limits and connection errors raise redacted `PublicHTTPError`; do not log raw third-party exceptions or URLs. Use `request`, rather than calling the client factory directly, so every URL and redirect is guarded.
 

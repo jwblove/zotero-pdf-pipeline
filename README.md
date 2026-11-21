@@ -6,6 +6,15 @@ A validated, auditable, agent-friendly command-line pipeline to find, verify, an
 
 v0.1.0 is a first release. Its current verification does not certify universal platform support or production hardening.
 
+## Quick start on Windows
+
+1. Install [Python for Windows](https://www.python.org/downloads/windows/) 3.11 or later and Zotero Desktop. Download the [project ZIP](https://github.com/jwblove/zotero-pdf-pipeline/archive/refs/heads/main.zip), extract it to a local drive and open the folder containing `setup-windows.cmd`.
+2. Type `powershell` in the File Explorer address bar. Run `.\setup-windows.cmd` and wait for `Installed`. It creates a project virtual environment and keeps any existing config.
+3. In Zotero, enable **Allow other applications on this computer to communicate with Zotero** under **Edit → Settings → Advanced**. Download the `.xpi` from the [zotero-mcp release](https://github.com/cookjohn/zotero-mcp/releases/latest), install it via **Tools → Plugins → gear → Install Add-on From File**, then check **Enable Server** under **Settings → Zotero MCP Plugin**. Use port `23120` and enable write operations when attaching.
+4. Keep Zotero open. Run `.\pipeline.cmd doctor` to check both connections before selecting a collection.
+5. Edit `config.toml` in Notepad. Find your collection by name in the [local collection list](http://127.0.0.1:23119/api/users/0/collections?limit=100) and copy its key to `collection_key`. Enter your contact email under `[contact]`. Native Windows can use the default archive path.
+6. Run `.\pipeline.cmd scan`, then `.\pipeline.cmd fetch --free-only --only ITEM_KEY` using one **item** key from the output. After reviewing the result, use `.\pipeline.cmd attach --only ITEM_KEY`. Use `.\pipeline.cmd` in place of `zotero-pdf-pipeline` throughout this guide.
+
 ### Why this tool?
 
 Most literature fetchers optimize purely for the number of sources. `zotero-pdf-pipeline` prioritizes reliability, verification, and auditability:
@@ -39,7 +48,7 @@ Before using this tool, you must configure your local Zotero desktop instance:
    - In Zotero, open **Tools -> Add-ons** (or Plugins), click the gear icon, choose **Install Add-on From File...**, and select the downloaded `.xpi`.
    - Default MCP port: `23120` (Streamable HTTP endpoint: `http://127.0.0.1:23120/mcp`).
 
-> **Testing scope**: Live read, download and attachment have been exercised on WSL with Windows Zotero, including independent MCP read-back. This does not cover every source or platform. The final closeout changes are verified offline; the newest final code has not all been live-regressed.
+> Native Windows installation and doctor have been exercised with a running Zotero desktop and MCP server. Native Windows fetch/validation uses a synthetic inbox in tests. The live attachment exercise used WSL with Windows Zotero.
 
 ### Agent-Assisted Setup Prompt
 
@@ -58,21 +67,7 @@ I want to use zotero-pdf-pipeline with my local Zotero desktop. Please guide me 
 
 ### Installation
 
-Requires Python >= 3.11. Current attachment targets **Windows Zotero**, with PDFs on Windows drives accessible through WSL mounts such as `/mnt/c/...` or `/mnt/d/...`. The converter also recognizes absolute Windows drive paths and normalizes `..`; `/home/...`, other native Linux paths and macOS paths are rejected for attachment. The CLI lock and file helpers use POSIX APIs, so a recognized Windows path does not imply native Windows CLI portability. WSL + Windows Zotero is the exercised setup; native Linux/macOS Zotero attachment is not supported or claimed tested.
-
-```bash
-git clone https://github.com/jwblove/zotero-pdf-pipeline.git
-cd zotero-pdf-pipeline
-pip install -e .
-```
-
-### Configuration
-
-Copy the example configuration:
-
-```bash
-cp config.example.toml config.toml
-```
+For WSL, run `pip install -e .` in a Python 3.11+ environment and copy `config.example.toml` to `config.toml`.
 
 Edit `config.toml`:
 - `[zotero].collection_key`: Your target Zotero collection key.

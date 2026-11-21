@@ -74,9 +74,13 @@ def cmd_doctor(cfg: Config) -> int:
 
     # ---------- 检查 1: Zotero 本地 API ----------
     local = ZoteroLocal(cfg.zotero.local_api)
-    if local.ping():
+    has_collection = cfg.zotero.collection_key not in ("", "YOUR_COLLECTION_KEY")
+    api_available = local.ping()
+    if api_available and has_collection:
         name = local.collection_name(cfg.zotero.collection_key)
         print(f"✅ Zotero 本地 API 可用（集合：{name}）")
+    elif api_available:
+        print("✅ Zotero 本地 API 可用")
     else:
         print("❌ Zotero 本地 API 不可用")
         problems.append(
@@ -112,12 +116,15 @@ def cmd_doctor(cfg: Config) -> int:
         problems.append("安装必需依赖 pypdf 后重试")
 
     # ---------- 检查 6: 待处理条目统计 ----------
-    if local.ping():
+    if api_available and has_collection:
         try:
             needs = local.items_without_attachment(cfg.zotero.collection_key)
             print(f"✅ 扫描到缺附件文献条目：{len(needs)} 篇")
         except ZoteroLocalError as exc:
             print(f"⚠️  扫描失败：{str(exc)[:100]}")
+            problems.append("确认 collection_key 属于当前个人文库")
+    elif not has_collection:
+        print("尚未选择集合；在 config.toml 填写 collection_key 后运行 scan。")
 
     local.close()
     print("-" * 68)
@@ -618,7 +625,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.collection:
         cfg.zotero.collection_key = args.collection
-    if args.command != "report" and (not cfg.zotero.collection_key or cfg.zotero.collection_key == "YOUR_COLLECTION_KEY"):
+    if args.command not in ("report", "doctor") and (not cfg.zotero.collection_key or cfg.zotero.collection_key == "YOUR_COLLECTION_KEY"):
         print("请使用 --collection 或设置 [zotero].collection_key", file=sys.stderr)
         return 2
     setup_logging(args.verbose)

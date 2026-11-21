@@ -6,6 +6,39 @@
 
 v0.1.0 为首次发布，当前验证不代表跨平台通用支持或生产安全认证。
 
+## Windows 快速开始
+
+1. 安装 [Windows 版 Python](https://www.python.org/downloads/windows/)（3.11 或更高版本）和 Zotero 桌面端。下载[项目 ZIP](https://github.com/jwblove/zotero-pdf-pipeline/archive/refs/heads/main.zip)，点击 **全部解压**，进入能看到 `setup-windows.cmd` 的文件夹。建议放在本地磁盘，例如 `D:\Tools\zotero-pdf-pipeline`。
+2. 在资源管理器地址栏输入 `powershell`，按回车，在打开的窗口运行下面的命令。看到 `Installed` 表示程序安装完成。重复运行会保留已有的 `config.toml`。
+
+   ```powershell
+   .\setup-windows.cmd
+   ```
+
+3. 打开 Zotero，在 **编辑 → 设置 → 高级** 勾选 **允许其他应用与 Zotero 通信**。从 [zotero-mcp 发布页](https://github.com/cookjohn/zotero-mcp/releases/latest) 下载以 `.xpi` 结尾的文件，通过 Zotero **工具 → 插件 → 齿轮 → 从文件安装插件** 安装。在 **设置 → Zotero MCP Plugin** 勾选 **Enable Server**，端口保持 `23120`。需要挂载附件时还须允许插件写操作。
+4. 保持 Zotero 打开，运行自检。即使还没选文献集合，也可以先核对 Zotero 本地 API 和 MCP 两行是否都显示可用。
+
+   ```powershell
+   .\pipeline.cmd doctor
+   ```
+
+5. 用记事本打开项目里的 `config.toml`。在浏览器打开 [本机 Zotero 集合列表](http://127.0.0.1:23119/api/users/0/collections?limit=100)，按集合名称找到相应的 `key`，替换 `YOUR_COLLECTION_KEY`。超过 100 个集合可在地址末尾加 `&start=100` 翻页。在 `[contact]` 的 `email` 填联系邮箱并保存。原生 Windows 可以直接使用默认归档目录。
+6. 运行 `.\pipeline.cmd scan` 列出缺附件条目。选一个条目，把下面的 `ITEM_KEY` 换成扫描输出的**条目 key**。先下载并校验，确认后再挂载。
+
+   ```powershell
+   .\pipeline.cmd fetch --free-only --only ITEM_KEY
+   .\pipeline.cmd attach --only ITEM_KEY
+   ```
+
+四个[可选来源插件](plugins/README.md)可以在基本流程跑通后按需配置。Windows 下，后文所有以 `zotero-pdf-pipeline` 开头的命令都可用 `.\pipeline.cmd` 调用。
+
+| 卡在哪一步 | 下一步 |
+| --- | --- |
+| 找不到 `setup-windows.cmd` | 先解压 ZIP，再从含有这个文件的目录打开 PowerShell。 |
+| 安装程序提示找不到 Python | 安装 Python 3.11+，重新打开 PowerShell，再运行安装命令。 |
+| 自检显示本地 API 不可用 | 检查 Zotero 已打开并允许本地通信，然后再次运行 `doctor`。 |
+| 本地 API 可用，但 MCP 不可用 | 在 Zotero 的插件设置中启用 **Enable Server**，核对端口，再运行 `doctor`。 |
+
 ### 为什么选择本工具？
 
 大多数文献获取工具单纯追求来源数量的堆叠。`zotero-pdf-pipeline` 将可靠性、质量验证与审计能力放在首位：
@@ -39,7 +72,7 @@ v0.1.0 为首次发布，当前验证不代表跨平台通用支持或生产安�
    - 在 Zotero 中点击 **工具 -> 附加组件**（或插件），点击右上角齿轮图标，选择 **Install Add-on From File...** 并选中下载的 `.xpi` 文件。
    - 默认 MCP 端口为 `23120`（Streamable HTTP 端点：`http://127.0.0.1:23120/mcp`）。
 
-> **验证范围**：已在 WSL + Windows Zotero 上实测读取、下载和挂载，并通过独立 MCP 回读确认。这不覆盖所有来源或平台。本轮最终收尾改动以离线验证为准，不能据此宣称最新最终代码已全部完成实机回归。
+> 原生 Windows 已实测安装，并通过 doctor 连接桌面 Zotero 和 MCP。原生 Windows 的获取、PDF 校验与归档使用模拟条目和本地收件箱验证。实际导入 Zotero 并回读附件的历史验证使用 WSL 配合 Windows Zotero。
 
 ### 用户填写表
 
@@ -62,21 +95,7 @@ v0.1.0 为首次发布，当前验证不代表跨平台通用支持或生产安�
 
 ### 环境安装
 
-要求 Python >= 3.11。当前挂载面向 **Windows Zotero**，PDF 须位于 Windows 盘，并可通过 `/mnt/c/...`、`/mnt/d/...` 等 WSL 挂载路径访问。转换器也识别绝对 Windows 盘符路径并规范化 `..`，但挂载时拒绝 `/home/...`、其他原生 Linux 路径及 macOS 路径。CLI 锁与文件 helper 使用 POSIX API，能识别 Windows 路径不意味着原生 Windows CLI 自动可移植。已实测组合为 WSL + Windows Zotero；不支持或宣称已测试原生 Linux/macOS Zotero 挂载。
-
-```bash
-git clone https://github.com/jwblove/zotero-pdf-pipeline.git
-cd zotero-pdf-pipeline
-pip install -e .
-```
-
-### 配置文件
-
-复制示例配置：
-
-```bash
-cp config.example.toml config.toml
-```
+WSL 用户可在独立 Python 3.11+ 环境内运行 `pip install -e .`，并执行 `cp config.example.toml config.toml`。
 
 编辑 `config.toml`：
 - `[zotero].collection_key`：目标 Zotero 集合的 key。

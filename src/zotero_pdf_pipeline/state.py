@@ -374,21 +374,28 @@ class RunLock:
         self.fd = None
 
     def __enter__(self):
-        import fcntl
         import os
         from .safe_files import target
         target(self.path.parent, self.path.name)
-        self.fd = os.open(self.path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
         try:
-            fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            os.close(self.fd)
-            self.fd = None
-            raise RunLockedError('Another pipeline command holds the state directory lock') from None
-        os.ftruncate(self.fd, 0)
-        os.write(self.fd, str(os.getpid()).encode('ascii'))
+            if os.name == 'nt':
+                from .windows_files import lock_fd
+                self.fd = lock_fd(self.path)
+            else:
+                import fcntl
+                self.fd = os.open(self.path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+                fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            os.ftruncate(self.fd, 0)
+            os.write(self.fd, str(os.getpid()).encode('ascii'))
+        except OSError as exc:
+            self.__exit__()
+            if isinstance(exc, BlockingIOError) or getattr(exc, 'winerror', None) == 32:
+                raise RunLockedError('Another pipeline command holds the state directory lock') from None
+            raise
         return self
 
     def __exit__(self, *args):
         import os
-        if self.fd is not None: os.close(self.fd)
+        if self.fd is not None:
+            os.close(self.fd)
+            self.fd = None

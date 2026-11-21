@@ -875,12 +875,14 @@ def _write_state(data):
     _STATE_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     fd, name = tempfile.mkstemp(dir=_STATE_PATH.parent, prefix=".ablesci-")
     try:
-        os.fchmod(fd, 0o600)
-        if stat.S_IMODE(os.fstat(fd).st_mode) != 0o600:
-            os.close(fd)
-            LOG.error("状态文件无法设置为 600，停止操作")
-            raise OSError("state file permissions cannot be enforced")
         with os.fdopen(fd, "w", encoding="utf-8") as f:
+            if os.name == "nt":
+                from zotero_pdf_pipeline.windows_files import private_path
+                private_path(name)
+            else:
+                os.fchmod(fd, 0o600)
+                if stat.S_IMODE(os.fstat(fd).st_mode) != 0o600:
+                    raise OSError("state file permissions cannot be enforced")
             json.dump(data, f, ensure_ascii=False)
             f.flush()
             os.fsync(f.fileno())

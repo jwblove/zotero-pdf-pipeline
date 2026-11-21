@@ -5,8 +5,7 @@ collection_key = "YOUR_COLLECTION_KEY"
 library_id = 1
 
 [paths]
-# Windows Zotero attach from WSL requires archive/staging on /mnt/<drive>/... .
-# The home-directory example below is for fetch-only use; change it before attach.
+# Native Windows uses your user directory. From WSL choose /mnt/<drive>/... for attachment.
 archive_dir = "~/zotero-pdf-archive"
 staging_dir = "data/staging"
 state_db = "data/pipeline.db"
@@ -40,4 +39,4 @@ email = ""
 enabled = []
 # Optional alternative: replace the active line above with:
 # enabled = ["my_plugin"]
-directory = "~/.config/zotero-pipeline/plugins"
+directory = "plugins"

@@ -6,7 +6,7 @@ Zotero 文献获取流水线：用户配置填写表
 不要在本表填写账号密码、API 密钥、Cookie 或验证码。本表可能包含个人路径和联系邮箱，请勿公开上传填写后的版本。
 
 【1. 基本信息】
-操作系统（例如 Windows 11 + WSL Ubuntu）：
+操作系统（例如 Windows 11 原生 PowerShell）：
 项目保存位置：
 联系邮箱（供 OpenAlex、Unpaywall 等服务使用，不是密码）：
 

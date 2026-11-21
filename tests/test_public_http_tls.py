@@ -25,7 +25,7 @@ def test_guarded_transport_preserves_host_sni_and_certificate_validation(
     created=subprocess.run([openssl,'req','-x509','-newkey','rsa:2048','-nodes',
         '-keyout',str(key),'-out',str(cert),'-days','1','-subj','/CN=public.fixture.invalid',
         '-addext','subjectAltName=DNS:public.fixture.invalid'],
-        env={'PATH':'/usr/bin:/bin'},stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15)
+        env=None if os.name == 'nt' else {'PATH':'/usr/bin:/bin'},stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=15)
     assert created.returncode==0
     server=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     server.load_cert_chain(cert,key)  # Fresh fixture keys only; no user credentials.

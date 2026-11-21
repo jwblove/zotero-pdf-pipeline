@@ -4,6 +4,8 @@ import os
 import re
 import stat
 import uuid
+from contextlib import contextmanager
+from pathlib import PureWindowsPath
 from pathlib import Path
 
 DEFAULT_MAX_PDF_BYTES = 100 * 1024 * 1024
@@ -26,6 +28,10 @@ def regular_file(path: Path, max_bytes: int = DEFAULT_MAX_PDF_BYTES) -> bool:
 def target(root: Path, name: str) -> Path:
     if not name or name in ('.', '..') or Path(name).name != name or '/' in name or '\\' in name:
         raise UnsafePath('invalid target name')
+    if os.name == 'nt':
+        reserved = os.path.isreserved(name) if hasattr(os.path, 'isreserved') else PureWindowsPath(name).is_reserved()
+        if reserved or any(c in '<>:"|?*' or ord(c) < 32 for c in name) or name.endswith((' ', '.')):
+            raise UnsafePath('invalid Windows filename')
     if root.is_symlink():
         raise UnsafePath('symlink root refused')
     root.mkdir(parents=True, exist_ok=True)
@@ -35,14 +41,34 @@ def target(root: Path, name: str) -> Path:
     return result
 
 def publish(root: Path, name: str, chunks, *, max_bytes=DEFAULT_MAX_PDF_BYTES, unique=True) -> Path:
-    dest = target(root, name)
-    flags = os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0) | getattr(os, 'O_NOFOLLOW', 0)
-    directory = os.open(str(root.resolve()), flags)
+    target(root, name)
+    root = root.absolute()
+    with _publication_directory(root) as directory:
+        return _publish(root, directory, name, chunks, max_bytes, unique)
+
+
+@contextmanager
+def _publication_directory(root):
+    if os.name == 'nt':
+        from .windows_files import pinned_directory
+        with pinned_directory(root):
+            yield None
+    else:
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        directory = os.open(root, flags)
+        try:
+            yield directory
+        finally:
+            os.close(directory)
+
+
+def _publish(root, directory, name, chunks, max_bytes, unique):
     temporary = '.partial-' + uuid.uuid4().hex
-    created = False
+    temp_path = root / temporary if directory is None else temporary
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0)
+    fd = os.open(temp_path, flags, 0o600, dir_fd=directory)
+    cleanup = True
     try:
-        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0), 0o600, dir_fd=directory)
-        created = True
         with os.fdopen(fd, 'wb') as output:
             total = 0
             for chunk in chunks:
@@ -58,6 +84,11 @@ def publish(root: Path, name: str, chunks, *, max_bytes=DEFAULT_MAX_PDF_BYTES, u
             dest = target(root, candidate)
             try:
                 # Linking publishes a fully written file without replacing an existing name.
+                if directory is None:
+                    # Windows rename fails if the destination already exists.
+                    os.rename(temp_path, dest)
+                    cleanup = False
+                    return dest
                 os.link(temporary, candidate, src_dir_fd=directory, dst_dir_fd=directory, follow_symlinks=False)
                 return dest
             except FileExistsError:
@@ -66,10 +97,10 @@ def publish(root: Path, name: str, chunks, *, max_bytes=DEFAULT_MAX_PDF_BYTES, u
         raise UnsafePath('no unused filename')
     finally:
         try:
-            if created: os.unlink(temporary, dir_fd=directory)
+            if cleanup:
+                os.unlink(temp_path, dir_fd=directory)
         except FileNotFoundError:
             pass
-        os.close(directory)
 
 def write_bytes(root: Path, name: str, content: bytes, **kwargs) -> Path:
     return publish(root, name, [content], **kwargs)
@@ -77,7 +108,11 @@ def write_bytes(root: Path, name: str, content: bytes, **kwargs) -> Path:
 def copy_file(source: Path, root: Path, name: str, *, max_bytes=DEFAULT_MAX_PDF_BYTES) -> Path:
     if not regular_file(source, max_bytes):
         raise UnsafePath('source must be a bounded regular file')
-    fd = os.open(source, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+    if os.name == 'nt':
+        from .windows_files import read_fd
+        fd = read_fd(source)
+    else:
+        fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
     with os.fdopen(fd, 'rb') as stream:
         if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
             raise UnsafePath('source is not regular')

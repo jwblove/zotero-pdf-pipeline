@@ -153,9 +153,13 @@ def _browser_pdf(page_url):
             browser, executable = executable
             profile = Path.home() / '.local/state/zotero-pipeline/scihub-profile'
             profile.mkdir(parents=True, exist_ok=True, mode=0o700)
-            profile.chmod(0o700)
-            if profile.stat().st_mode & 0o077:
-                raise OSError('insecure browser profile')
+            if os.name == 'nt':
+                from zotero_pdf_pipeline.windows_files import private_path
+                private_path(profile, directory=True)
+            else:
+                profile.chmod(0o700)
+                if profile.stat().st_mode & 0o077:
+                    raise OSError('insecure browser profile')
             context = browser.launch_persistent_context(str(profile), executable_path=executable, headless=True)
             try:
                 # Deny insecure network requests, including redirects and JS requests.

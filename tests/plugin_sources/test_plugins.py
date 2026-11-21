@@ -59,14 +59,14 @@ def test_success(setup, paper, tmp_path):
     assert client.requests == [None]
     assert json.loads(module._STATE_PATH.read_text()) == {}
 
-def test_resume_and_permission(setup, paper, tmp_path):
+def test_resume_and_permission(setup, paper, tmp_path, assert_private):
     source, module, client = setup
     client.mode = 'fail'
     assert source.fetch(paper, tmp_path) is None
     state = json.loads(module._STATE_PATH.read_text())
     assert state[module._state_key(paper)]['detail_url'] == URL
     assert set(state[module._state_key(paper)]) == {'detail_url', 'timestamp'}
-    assert stat.S_IMODE(module._STATE_PATH.stat().st_mode) == 0o600
+    assert_private(module._STATE_PATH)
     client.mode = 'success'
     assert source.fetch(paper, tmp_path).exists()
     assert client.requests == [None, URL]
@@ -117,7 +117,12 @@ def test_real_loader():
 
 def test_insecure_state_filesystem_blocks_publication(setup, paper, tmp_path, monkeypatch):
     source, module, client = setup
-    monkeypatch.setattr(module.stat, 'S_IMODE', lambda mode: 0o777)
+    if module.os.name == 'nt':
+        def deny(path):
+            raise PermissionError('simulated ACL failure')
+        monkeypatch.setattr('zotero_pdf_pipeline.windows_files.private_path', deny)
+    else:
+        monkeypatch.setattr(module.stat, 'S_IMODE', lambda mode: 0o777)
     assert source.fetch(paper, tmp_path) is None
     assert client.requests == []
 

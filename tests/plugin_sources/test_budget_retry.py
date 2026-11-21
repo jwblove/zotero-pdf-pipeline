@@ -69,13 +69,13 @@ def case(tmp_path, monkeypatch):
     return source, module, client, paper
 
 
-def test_retry_reservation_and_resume(case, tmp_path, caplog):
+def test_retry_reservation_and_resume(case, tmp_path, caplog, assert_private):
     source, module, client, paper = case
     with caplog.at_level(logging.DEBUG):
         assert source.fetch(paper, tmp_path) is None
         state = json.loads(module._STATE_PATH.read_text())
         assert state[module._state_key(paper)]["highspeed_attempt_reserved"] is True
-        assert stat.S_IMODE(module._STATE_PATH.stat().st_mode) == 0o600
+        assert_private(module._STATE_PATH)
         assert client.channels == ["highspeed", "normal", "normal"]
         assert "_request_download_token" not in vars(client)
         assert source.fetch(paper, tmp_path) is None

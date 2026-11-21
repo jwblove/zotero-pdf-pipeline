@@ -54,14 +54,14 @@ def setup_browser(monkeypatch, module, tmp_path, html, body):
 def paper(key='A'):
     return PaperNeed(item_key=key, doi='10.1234/test', title='Test')
 
-def test_browser_success(plugin, monkeypatch, tmp_path):
+def test_browser_success(plugin, monkeypatch, tmp_path, assert_private):
     source, module = plugin
     browser = setup_browser(monkeypatch, module, tmp_path, '<iframe src="/pdf"></iframe>', b'%PDF-test')
     dest = tmp_path / 'destination'
     result = source.fetch(paper(), dest)
     assert result.parent == dest and result.read_bytes() == b'%PDF-test'
     assert browser.urls == ['https://mirror.invalid/pdf']
-    assert (tmp_path / '.local/state/zotero-pipeline/scihub-profile').stat().st_mode & 0o777 == 0o700
+    assert_private(tmp_path / '.local/state/zotero-pipeline/scihub-profile')
 
 def test_still_challenged(plugin, monkeypatch, tmp_path, caplog):
     source, module = plugin
