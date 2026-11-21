@@ -214,6 +214,8 @@ zotero-pdf-pipeline --config config.toml attach --only ITEM_KEY
 
 在 `fetch`/`run` 前加全局 `-v` 可查看插件异常的脱敏调用栈：仅异常类型、模块和行号，不含消息、源码、路径或 URL。插件返回 `None` 时也会标明插件名。命名与类导出规则见协议文档。
 
+另提供 AbleSci（科研通）、SciDownl、Sci-Hub 和 FlareSolverr 四个可选来源。启用方式、积分消耗和本地状态见[插件使用说明](plugins/README.md)。
+
 ### 示例插件：Sci-Hub 教学演示
 仓库在 [examples/plugins/scihub.py](examples/plugins/scihub.py) 中包含一个只用于演示 `Source` 协议的范例：
 - 默认处于禁用状态。

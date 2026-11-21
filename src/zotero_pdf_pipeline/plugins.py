@@ -17,6 +17,8 @@ Names match [A-Za-z][A-Za-z0-9_]*; exports may be instances or zero-argument cla
 Python plugins run with user permissions; this is not a sandbox.
 """
 from __future__ import annotations
+from contextlib import ExitStack
+from tempfile import TemporaryDirectory
 from importlib import metadata, util
 from pathlib import Path
 from typing import Protocol
@@ -71,10 +73,14 @@ def fetch_plugin(name: str, directory: Path, paper: PaperNeed, staging: Path,
                  *, max_pdf_bytes=DEFAULT_MAX_PDF_BYTES) -> ResolvedFile | None:
     safe_key(paper.item_key)
     source = load_source(name, directory)
-    candidate = source.fetch(paper, staging)
-    if candidate is None:
-        return None
-    candidate = Path(candidate)
-    # Copy into staging so quarantine never moves a plugin's original file.
-    dest = copy_file(candidate, staging, f'plugin-{paper.item_key}-{name}.pdf', max_bytes=max_pdf_bytes)
+    with ExitStack() as cleanup:
+        destination = staging
+        if getattr(source, 'temporary_candidates', False):
+            destination = Path(cleanup.enter_context(TemporaryDirectory(prefix='zpp-candidate-')))
+        candidate = source.fetch(paper, destination)
+        if candidate is None:
+            return None
+        candidate = Path(candidate)
+        # Copy into staging so quarantine never moves a plugin's original file.
+        dest = copy_file(candidate, staging, f'plugin-{paper.item_key}-{name}.pdf', max_bytes=max_pdf_bytes)
     return ResolvedFile(paper, dest, name)

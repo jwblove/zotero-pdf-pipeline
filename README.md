@@ -209,6 +209,8 @@ The original is retained and ordinary PDF validation still applies. This example
 
 Use global `-v` before `fetch`/`run` for redacted plugin exception traces (type, module and line numbers only; no message, source, path or URL). A plugin returning `None` is identified by name. See the protocol for discovery naming and class rules.
 
+Four optional source adapters are available in [plugins/](plugins/README.md), with setup instructions, account effects and test coverage.
+
 ### Example Plugin: Sci-Hub Illustration
 The repository includes an educational example in [examples/plugins/scihub.py](examples/plugins/scihub.py) to illustrate the `Source` protocol:
 - It is disabled by default.
